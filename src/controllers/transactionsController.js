@@ -97,19 +97,42 @@ export async function deleteTransaction(req, res) {
 export async function getSummaryByUserId(req, res) {
   try {
     const { userId } = req.params;
+    const { category, from, to } = req.query;
+    console.log("Summary filters:", { category, from, to });
 
+    // BASE QUERY
+    let whereClause = sql`user_id = ${userId}`;
+
+    // CATEGORY FILTER
+    if (category && category !== "All") {
+      whereClause = sql`${whereClause} AND category = ${category}`;
+    }
+
+    // DATE RANGE FILTER
+    if (from) {
+      whereClause = sql`${whereClause} AND created_at >= ${from}`;
+    }
+    if (to) {
+      whereClause = sql`${whereClause} AND created_at <= ${to}`;
+    }
+
+    // SUMMARY QUERIES USING FILTERS
     const balanceResult = await sql`
-      SELECT COALESCE(SUM(amount), 0) as balance FROM transactions WHERE user_id = ${userId}
+      SELECT COALESCE(SUM(amount), 0) AS balance
+      FROM transactions
+      WHERE ${whereClause}
     `;
 
     const incomeResult = await sql`
-      SELECT COALESCE(SUM(amount), 0) as income FROM transactions
-      WHERE user_id = ${userId} AND amount > 0
+      SELECT COALESCE(SUM(amount), 0) AS income
+      FROM transactions
+      WHERE ${whereClause} AND amount > 0
     `;
 
     const expensesResult = await sql`
-      SELECT COALESCE(SUM(amount), 0) as expenses FROM transactions
-      WHERE user_id = ${userId} AND amount < 0
+      SELECT COALESCE(SUM(amount), 0) AS expenses
+      FROM transactions
+      WHERE ${whereClause} AND amount < 0
     `;
 
     res.status(200).json({
@@ -118,7 +141,8 @@ export async function getSummaryByUserId(req, res) {
       expenses: expensesResult[0].expenses,
     });
   } catch (error) {
-    console.log("Error gettin the summary", error);
+    console.log("Error getting the summary", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }
+
