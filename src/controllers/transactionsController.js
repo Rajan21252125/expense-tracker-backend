@@ -3,14 +3,41 @@ import { sql } from "../config/db.js";
 export async function getTransactionsByUserId(req, res) {
   try {
     const { userId } = req.params;
+    const { type, category, from, to, sort } = req.query;
 
     if (!userId) {
       return res.status(400).json({ message: "User ID is required" });
     }
 
-    const transactions = await sql`
-        SELECT * FROM transactions WHERE user_id = ${userId} ORDER BY created_at DESC
-      `;
+    let query = sql`SELECT * FROM transactions WHERE user_id = ${userId}`;
+
+    if (type === "income") {
+      query = sql`${query} AND amount > 0`;
+    }
+
+    if (type === "expense") {
+      query = sql`${query} AND amount < 0`;
+    }
+
+    if (category && category !== "All") {
+      query = sql`${query} AND category = ${category}`;
+    }
+
+    if (from) {
+      query = sql`${query} AND created_at >= ${from}`;
+    }
+
+    if (to) {
+      query = sql`${query} AND created_at <= ${to}`;
+    }
+
+    if (sort === "asc") {
+      query = sql`${query} ORDER BY created_at ASC`;
+    } else {
+      query = sql`${query} ORDER BY created_at DESC`;
+    }
+
+    const transactions = await query;
 
     res.status(200).json(transactions);
   } catch (error) {
@@ -19,6 +46,7 @@ export async function getTransactionsByUserId(req, res) {
   }
 }
 
+
 export async function createTransaction(req, res) {
   try {
     const { title, amount, category, user_id } = req.body;
@@ -26,6 +54,8 @@ export async function createTransaction(req, res) {
     if (!title || !user_id || !category || amount === undefined) {
       return res.status(400).json({ message: "All fields are required" });
     }
+
+    console.log(req.body);
 
     const transaction = await sql`
       INSERT INTO transactions(user_id,title,amount,category)
