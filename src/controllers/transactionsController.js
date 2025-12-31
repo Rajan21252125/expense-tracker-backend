@@ -11,11 +11,11 @@ export async function getTransactionsByUserId(req, res) {
 
     let query = sql`SELECT * FROM transactions WHERE user_id = ${userId}`;
 
-    if (type === "income") {
+    if (type === "Income") {
       query = sql`${query} AND amount > 0`;
     }
 
-    if (type === "expense") {
+    if (type === "Expense") {
       query = sql`${query} AND amount < 0`;
     }
 
